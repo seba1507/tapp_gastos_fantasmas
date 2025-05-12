@@ -26,9 +26,11 @@ export default function Home() {
 
   // Estados para guardar datos de la aplicación
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  // Eliminado: const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // ID de sesión único para cada toma de fotografía
+  const [sessionId, setSessionId] = useState(Date.now().toString());
 
   // Estado para prevenir múltiples transiciones
   const [isNavigating, setIsNavigating] = useState(false);
@@ -63,6 +65,9 @@ export default function Home() {
     console.log("handleImageCapture llamado con datos de imagen",
                 imageData.substring(0, 50) + "...");
 
+    // Generar un nuevo ID de sesión
+    setSessionId(Date.now().toString());
+    
     // Guardar la imagen primero
     setCapturedImage(imageData);
 
@@ -75,15 +80,24 @@ export default function Home() {
   // Función para procesar imagen cuando el usuario acepta en review
   const handleAcceptImage = () => {
     console.log("Imagen aceptada, navegando a la pantalla de procesamiento");
+    
+    // Limpiar el QR anterior explícitamente para evitar mostrar QRs antiguos
+    setQrCodeUrl(null);
+    
     navigateTo('processing', true);
   };
 
   // Función para manejar el resultado del procesamiento
   const handleProcessingComplete = (downloadUrl: string) => {
     console.log("Procesamiento completado, URL para descarga:", downloadUrl);
-    setQrCodeUrl(downloadUrl); // Usamos la URL para el QR
-    // No necesitamos setProcessedImage(downloadUrl); ya que no se usa processedImage
-    navigateTo('result', true);
+    
+    // Actualizar primero el estado del QR
+    setQrCodeUrl(downloadUrl);
+    
+    // Esperar brevemente para que React actualice el estado
+    setTimeout(() => {
+      navigateTo('result', true);
+    }, 100);
   };
 
   // Función para manejar errores de procesamiento
@@ -97,7 +111,6 @@ export default function Home() {
   const handleReset = () => {
     console.log("Reiniciando aplicación");
     setCapturedImage(null);
-    // Eliminado: setProcessedImage(null);
     setQrCodeUrl(null);
     setErrorMessage(null);
     navigateTo('bienvenida', true);
@@ -116,7 +129,7 @@ export default function Home() {
         className="object-cover"
       />
       {/* Semi-transparent overlay if needed, or just rely on content z-index */}
-      <div className="relative z-10 h-full w-full flex flex-col items-center justify-center"> {/* Added a container for z-index */}
+      <div className="relative z-10 h-full w-full flex flex-col items-center justify-center">
 
         {currentState === 'bienvenida' && (
           <BienvenidaScreen onNavigate={() => navigateTo('camera')} />
@@ -144,7 +157,8 @@ export default function Home() {
 
         {currentState === 'processing' && (
           <ProcessingScreen
-            imageUrl={capturedImage} // ProcessingScreen necesita la imagen capturada
+            imageUrl={capturedImage}
+            sessionId={sessionId} // Nuevo prop
             onProcessingComplete={handleProcessingComplete}
             onProcessingError={handleProcessingError}
           />
@@ -152,7 +166,8 @@ export default function Home() {
 
         {currentState === 'result' && (
           <ResultScreen
-            qrCodeUrl={qrCodeUrl} // ResultScreen necesita la URL del QR
+            qrCodeUrl={qrCodeUrl}
+            sessionId={sessionId} // Nuevo prop
             onReset={handleReset}
           />
         )}
@@ -160,7 +175,7 @@ export default function Home() {
         {currentState === 'error' && (
            // Error screen is now a simple overlay on top of the background
            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6">
-             <h1 className="text-title-sm font-bold text-center mb-8 text-white drop-shadow">¡UPS! ALGO SALIÓ MAL</h1> {/* Added text-white for visibility */}
+             <h1 className="text-title-sm font-bold text-center mb-8 text-white drop-shadow">¡UPS! ALGO SALIÓ MAL</h1>
 
              <div className="bg-red-500/80 p-4 rounded-xl mb-8 max-w-md">
                <p className="text-subtitle text-white text-center">

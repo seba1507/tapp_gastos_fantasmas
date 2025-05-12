@@ -5,7 +5,8 @@ import Image from 'next/image';
 
 interface ProcessingScreenProps {
   imageUrl: string | null;
-  onProcessingComplete: (downloadUrl: string) => void;  // Solo recibe la URL de descarga
+  sessionId: string; // Nuevo prop
+  onProcessingComplete: (downloadUrl: string) => void;
   onProcessingError: (error: string) => void;
 }
 
