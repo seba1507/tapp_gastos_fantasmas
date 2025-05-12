@@ -5,90 +5,86 @@ import Image from 'next/image';
 
 interface ProcessingScreenProps {
   imageUrl: string | null;
-  sessionId: string; // Nuevo prop
+  sessionId: string;
   onProcessingComplete: (downloadUrl: string) => void;
   onProcessingError: (error: string) => void;
 }
 
 export default function ProcessingScreen({ 
   imageUrl, 
+  sessionId,
   onProcessingComplete, 
   onProcessingError 
 }: ProcessingScreenProps) {
   const [processingStatus, setProcessingStatus] = useState<string>("Preparando imagen...");
   
-  // En ProcessingScreen.tsx
-// En ProcessingScreen.tsx - simplificado para pasar solo la URL de descarga
-// components/screens/ProcessingScreen.tsx
-useEffect(() => {
-  if (!imageUrl) {
-    onProcessingError("No hay imagen para procesar");
-    return;
-  }
-  
-  const processImage = async () => {
-    try {
-      setProcessingStatus("Enviando imagen a procesar...");
-      
-      // Convertir la dataURL a un Blob para enviarla
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-
-      // Crear un FormData y añadir la imagen
-      const formData = new FormData();
-      formData.append('image', blob, 'captured-image.jpg');
-
-      // Enviar a la API de procesamiento
-      setProcessingStatus("Procesando imagen con IA...");
-      const processResponse = await fetch('/api/process-comfy', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!processResponse.ok) {
-        const errorData = await processResponse.json();
-        throw new Error(errorData.error || 'Error al procesar la imagen');
-      }
-
-      const data = await processResponse.json();
-      
-      if (!data.success) {
-        throw new Error('Error en el procesamiento de la imagen');
-      }
-
-      setProcessingStatus("¡Imagen lista!");
-      
-      // Crear la URL personalizada usando nuestra propia API
-// En ProcessingScreen.tsx
-const downloadUrl = data.directDownloadUrl; 
-      setTimeout(() => {
-        // Pasamos la URL personalizada
-        onProcessingComplete(downloadUrl);
-      }, 1000);
-      
-    } catch (error) {
-      console.error('Error al procesar la imagen:', error);
-      setProcessingStatus("Error al procesar la imagen");
-      
-      onProcessingError(
-        error instanceof Error 
-          ? error.message 
-          : 'Ocurrió un error inesperado al procesar la imagen'
-      );
+  useEffect(() => {
+    if (!imageUrl) {
+      onProcessingError("No hay imagen para procesar");
+      return;
     }
-  };
-  
-  // Iniciar procesamiento con un leve retraso para que se vea la pantalla
-  const timer = setTimeout(() => {
-    processImage();
-  }, 500);
-  
-  return () => clearTimeout(timer);
-}, [imageUrl, onProcessingComplete, onProcessingError]);
+    
+    const processImage = async () => {
+      try {
+        setProcessingStatus("Enviando imagen a procesar...");
+        
+        // Convertir la dataURL a un Blob para enviarla
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
 
+        // Crear un FormData y añadir la imagen
+        const formData = new FormData();
+        formData.append('image', blob, 'captured-image.jpg');
+        formData.append('sessionId', sessionId); // Añadir el ID de sesión para seguimiento
 
+        // Enviar a la API de procesamiento
+        setProcessingStatus("Procesando imagen con IA...");
+        const processResponse = await fetch('/api/process-comfy', {
+          method: 'POST',
+          body: formData,
+        });
 
+        if (!processResponse.ok) {
+          const errorData = await processResponse.json();
+          throw new Error(errorData.error || 'Error al procesar la imagen');
+        }
 
+        const data = await processResponse.json();
+        
+        if (!data.success) {
+          throw new Error('Error en el procesamiento de la imagen');
+        }
+
+        setProcessingStatus("¡Imagen lista!");
+        
+        // Usar directamente la URL del blob para evitar problemas de nombres
+        const downloadUrl = data.blobUrl;
+        console.log("URL del blob recibida:", downloadUrl);
+        
+        // Pequeña pausa para que se vea el mensaje de éxito
+        setTimeout(() => {
+          onProcessingComplete(downloadUrl);
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Error al procesar la imagen:', error);
+        setProcessingStatus("Error al procesar la imagen");
+        
+        onProcessingError(
+          error instanceof Error 
+            ? error.message 
+            : 'Ocurrió un error inesperado al procesar la imagen'
+        );
+      }
+    };
+    
+    // Iniciar procesamiento con un leve retraso para que se vea la pantalla
+    const timer = setTimeout(() => {
+      processImage();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [imageUrl, onProcessingComplete, onProcessingError, sessionId]);
 
   return (
     <div className="relative flex flex-col h-full w-full">

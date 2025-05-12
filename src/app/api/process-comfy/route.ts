@@ -317,29 +317,31 @@ export async function POST(request: NextRequest) {
         const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
         
         // Generar un nombre único y personalizado para la imagen
+// Modificar la parte final donde procesas y guardas la imagen
+
+// Generar un nombre único y personalizado para la imagen
 const timestamp = format(new Date(), 'ddMMyyyyHHmmss');
 const randomSuffix = Math.random().toString(36).substring(2, 7);
+// Usar el mismo sufijo en el nombre del archivo para consistencia
 const customFileName = `gasto_fantasma_${timestamp}_${randomSuffix}.jpg`;
+const filePath = `totem-fotos/${customFileName}`;
 
-
-        // Crear la ruta dentro de Vercel Blob (mantiene organización por carpetas)
-        const filePath = `totem-fotos/${customFileName}`;
-        
-        // Subir la imagen a Vercel Blob con nombre personalizado
-        console.log('Subiendo imagen a Vercel Blob como:', customFileName);
+// Subir la imagen a Vercel Blob con nombre personalizado
+console.log('Subiendo imagen a Vercel Blob como:', customFileName);
 const blob = await put(filePath, imageResponse.data, {
   access: 'public',
-  contentType: 'image/jpeg'
+  contentType: 'image/jpeg',
+  addRandomSuffix: false // No añadir sufijos adicionales
 });
-        
-        console.log(`Imagen subida a Vercel Blob. URL: ${blob.url}`);
-        
-        // Extraer el timestamp para la URL personalizada
-        // Devolver también un ID que usaremos en nuestra API personalizada
+
+console.log(`Imagen subida a Vercel Blob. URL: ${blob.url}`);
+
+// Retornar la URL directa del blob
 return NextResponse.json({ 
   success: true,
-  blobUrl: blob.url,
-  directDownloadUrl: blob.url // URL directa para la descarga
+  blobUrl: blob.url, // URL directa para el QR
+  downloadUrl: blob.url, // Por si necesitas una URL separada para descargas
+  imageId: `${timestamp}_${randomSuffix}` // ID completo incluido el sufijo
 });
       } catch (err) {
         console.error('Error al procesar la imagen final:', err);
