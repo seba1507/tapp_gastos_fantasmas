@@ -318,7 +318,9 @@ export async function POST(request: NextRequest) {
         
         // Generar un nombre único y personalizado para la imagen
         const timestamp = format(new Date(), 'ddMMyyyyHHmmss');
-        const customFileName = `gasto_fantasma_${timestamp}.jpg`;
+        const randomSuffix = Math.random().toString(36).substring(2, 9);
+
+const customFileName = `gasto_fantasma_${timestamp}_${randomSuffix}.jpg`;
         
         // Crear la ruta dentro de Vercel Blob (mantiene organización por carpetas)
         const filePath = `totem-fotos/${customFileName}`;
