@@ -317,11 +317,11 @@ export async function POST(request: NextRequest) {
         const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
         
         // Generar un nombre único y personalizado para la imagen
-        const timestamp = format(new Date(), 'ddMMyyyyHHmmss');
-        const randomSuffix = Math.random().toString(36).substring(2, 9);
-
+const timestamp = format(new Date(), 'ddMMyyyyHHmmss');
+const randomSuffix = Math.random().toString(36).substring(2, 7);
 const customFileName = `gasto_fantasma_${timestamp}_${randomSuffix}.jpg`;
-        
+
+
         // Crear la ruta dentro de Vercel Blob (mantiene organización por carpetas)
         const filePath = `totem-fotos/${customFileName}`;
         
@@ -336,12 +336,13 @@ const blob = await put(filePath, imageResponse.data, {
         
         // Extraer el timestamp para la URL personalizada
         // Devolver también un ID que usaremos en nuestra API personalizada
-        return NextResponse.json({ 
-          success: true,
-          blobUrl: blob.url,
-          downloadUrl: blob.downloadUrl,
-          imageId: timestamp // Este ID lo usamos para la URL personalizada
-        });
+return NextResponse.json({ 
+  success: true,
+  blobUrl: blob.url,
+  downloadUrl: blob.downloadUrl,
+  imageId: timestamp,
+  suffixId: randomSuffix // Añadir el sufijo para reconstruir el nombre
+});
       } catch (err) {
         console.error('Error al procesar la imagen final:', err);
         return NextResponse.json({ 

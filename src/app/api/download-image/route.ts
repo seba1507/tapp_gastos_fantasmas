@@ -13,8 +13,21 @@ export async function GET(request: NextRequest) {
   }
   
   try {
-    // Construye la URL de Vercel Blob con el ID proporcionado
-    const blobUrl = `https://deprb6wblgolesjs.public.blob.vercel-storage.com/totem-fotos/gasto_fantasma_${id}.jpg`;
+    // Verificar si el ID ya es una URL completa
+    if (id.startsWith('http')) {
+      return NextResponse.redirect(id);
+    }
+    
+    // Obtener información adicional si se proporciona
+    const suffix = searchParams.get('suffix');
+    
+    // Construir el nombre del archivo con o sin sufijo
+    let blobUrl;
+    if (suffix) {
+      blobUrl = `https://deprb6wblgolesjs.public.blob.vercel-storage.com/totem-fotos/gasto_fantasma_${id}_${suffix}.jpg`;
+    } else {
+      blobUrl = `https://deprb6wblgolesjs.public.blob.vercel-storage.com/totem-fotos/gasto_fantasma_${id}.jpg`;
+    }
     
     // Redirige a la URL de Vercel Blob
     return NextResponse.redirect(blobUrl);
