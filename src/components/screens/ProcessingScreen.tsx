@@ -1,31 +1,47 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 
 interface ProcessingScreenProps {
   imageUrl: string | null;
-  sessionId: string;
   onProcessingComplete: (downloadUrl: string) => void;
   onProcessingError: (error: string) => void;
 }
 
 export default function ProcessingScreen({ 
   imageUrl, 
-  sessionId,
   onProcessingComplete, 
   onProcessingError 
 }: ProcessingScreenProps) {
   const [processingStatus, setProcessingStatus] = useState<string>("Preparando imagen...");
   
+  // Usamos refs en lugar de estado para evitar re-renders que podrían causar múltiples ejecuciones
+  const isProcessingRef = useRef<boolean>(false);
+  const isCompletedRef = useRef<boolean>(false);
+  const processingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Este efecto se ejecuta UNA SOLA VEZ debido al array de dependencias vacío []
   useEffect(() => {
+    let isMounted = true;
+    
     if (!imageUrl) {
       onProcessingError("No hay imagen para procesar");
       return;
     }
     
     const processImage = async () => {
+      // ¡Verificación crítica! Si ya estamos procesando, salir inmediatamente
+      if (isProcessingRef.current === true) {
+        console.log("⚠️ Ya hay un procesamiento en curso, no iniciando otro");
+        return;
+      }
+      
+      // Marcar que estamos procesando
+      isProcessingRef.current = true;
+      
       try {
+        if (!isMounted) return;
         setProcessingStatus("Enviando imagen a procesar...");
         
         // Convertir la dataURL a un Blob para enviarla
@@ -35,13 +51,23 @@ export default function ProcessingScreen({
         // Crear un FormData y añadir la imagen
         const formData = new FormData();
         formData.append('image', blob, 'captured-image.jpg');
-        formData.append('sessionId', sessionId); // Añadir el ID de sesión para seguimiento
+        
+        // Añadir un timestamp único para cada solicitud
+        formData.append('timestamp', Date.now().toString());
 
         // Enviar a la API de procesamiento
+        if (!isMounted) return;
         setProcessingStatus("Procesando imagen con IA...");
+        
         const processResponse = await fetch('/api/process-comfy', {
           method: 'POST',
           body: formData,
+          // Añadir cache-busting para asegurar que no se usa una respuesta cacheada
+          headers: {
+            'Cache-Control': 'no-cache, no-store',
+            'Pragma': 'no-cache',
+            'X-Request-Time': Date.now().toString()
+          }
         });
 
         if (!processResponse.ok) {
@@ -55,20 +81,31 @@ export default function ProcessingScreen({
           throw new Error('Error en el procesamiento de la imagen');
         }
 
+        // Verificar si ya completamos este proceso o ya no estamos montados
+        if (isCompletedRef.current || !isMounted) {
+          console.log("Ignorando resultado porque el componente ya no está montado o el procesamiento ya fue completado");
+          return;
+        }
+
+        if (!isMounted) return;
         setProcessingStatus("¡Imagen lista!");
         
-        // Usar directamente la URL del blob para evitar problemas de nombres
-const downloadUrl = window.location.origin + 
-  `/api/download-image?id=${encodeURIComponent(data.blobUrl)}`;
-console.log("URL de descarga creada:", downloadUrl);
-
-// Pequeña pausa para que se vea el mensaje de éxito
-setTimeout(() => {
-  onProcessingComplete(downloadUrl);
-}, 1000);
+        // URL para descargar usando nuestra API
+        const downloadUrl = window.location.origin + `/api/download-image?id=${encodeURIComponent(data.blobUrl)}`;
+        console.log("URL de descarga creada:", downloadUrl);
+        
+        // Marcar como completado ANTES de la llamada de retorno
+        isCompletedRef.current = true;
+        
+        // Asegurarnos de que solo llamamos a onProcessingComplete UNA VEZ
+        if (isMounted) {
+          onProcessingComplete(downloadUrl);
+        }
         
       } catch (error) {
         console.error('Error al procesar la imagen:', error);
+        if (!isMounted) return;
+        
         setProcessingStatus("Error al procesar la imagen");
         
         onProcessingError(
@@ -76,16 +113,40 @@ setTimeout(() => {
             ? error.message 
             : 'Ocurrió un error inesperado al procesar la imagen'
         );
+      } finally {
+        // Marcar que terminamos el procesamiento
+        isProcessingRef.current = false;
       }
     };
     
     // Iniciar procesamiento con un leve retraso para que se vea la pantalla
-    const timer = setTimeout(() => {
-      processImage();
+    // Guardamos la referencia al timeout para poder limpiarlo si el componente se desmonta
+    processingTimeoutRef.current = setTimeout(() => {
+      if (isMounted) {
+        console.log("⏱️ Iniciando procesamiento después del timeout");
+        processImage();
+      }
     }, 500);
     
-    return () => clearTimeout(timer);
-  }, [imageUrl, onProcessingComplete, onProcessingError, sessionId]);
+    // Limpieza cuando el componente se desmonta
+    return () => {
+      console.log("🧹 Desmontando ProcessingScreen, limpiando recursos");
+      isMounted = false;
+      
+      // Limpiar timeout si existe
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+    };
+  }, []); // Array vacío para que solo se ejecute UNA vez al montar
+
+  // Actualizar el estado solo cuando cambia la URL de la imagen 
+  // (pero NO reiniciar el procesamiento)
+  useEffect(() => {
+    if (!imageUrl) {
+      onProcessingError("No hay imagen para procesar");
+    }
+  }, [imageUrl, onProcessingError]);
 
   return (
     <div className="relative flex flex-col h-full w-full">

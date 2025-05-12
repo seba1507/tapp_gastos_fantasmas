@@ -106,7 +106,7 @@ export default function ResultScreen({ qrCodeUrl, onReset }: ResultScreenProps) 
           ) : (
             <QRCodeSVG 
               value={qrCodeUrl || ''}
-              size={200}
+              size={400}
               bgColor={"#ffffff"}
               fgColor={"#000000"}
               level={"M"}

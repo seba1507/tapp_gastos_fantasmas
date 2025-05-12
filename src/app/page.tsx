@@ -158,7 +158,6 @@ export default function Home() {
         {currentState === 'processing' && (
           <ProcessingScreen
             imageUrl={capturedImage}
-            sessionId={sessionId} // Nuevo prop
             onProcessingComplete={handleProcessingComplete}
             onProcessingError={handleProcessingError}
           />

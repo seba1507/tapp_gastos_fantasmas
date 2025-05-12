@@ -1,16 +1,50 @@
+// app/api/process-comfy/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { put } from '@vercel/blob';
-import { format } from 'date-fns'; // Importamos date-fns
+import { format } from 'date-fns';
 
 // URL del servidor ComfyUI en RunPod
 const SERVER_ADDRESS = "https://pprd3ktfpb0lfj-7860.proxy.runpod.net";
 const JPTR_ADDRESS = "https://pprd3ktfpb0lfj-8888.proxy.runpod.net";
 
+// Mapa para rastrear solicitudes recientes y evitar duplicados
+const recentRequests = new Map();
+
 export async function POST(request: NextRequest) {
   console.log('Recibida solicitud en API process-comfy');
   
   try {
+    // Crear un ID único para esta solicitud
+    const requestTime = Date.now();
+    const requestId = `req_${requestTime}_${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Verificar si tenemos solicitudes muy recientes (últimos 5 segundos)
+    const fiveSecondsAgo = requestTime - 5000;
+    let duplicateDetected = false;
+    
+    recentRequests.forEach((timestamp, key) => {
+      // Limpiar entradas antiguas
+      if (timestamp < fiveSecondsAgo) {
+        recentRequests.delete(key);
+      }
+      // Si encontramos una solicitud muy reciente, marcarla
+      else if (timestamp > fiveSecondsAgo) {
+        duplicateDetected = true;
+      }
+    });
+    
+    // Si detectamos una solicitud duplicada, devolver el error
+    if (duplicateDetected) {
+      console.log('Solicitud duplicada detectada, se devuelve error');
+      return NextResponse.json({ 
+        error: 'Solicitud duplicada. Por favor, espera unos segundos antes de intentarlo nuevamente.' 
+      }, { status: 429 });
+    }
+    
+    // Registrar esta solicitud
+    recentRequests.set(requestId, requestTime);
+    
     // Obtener datos de la petición
     const formData = await request.formData();
     const imageFile = formData.get('image');
@@ -26,7 +60,6 @@ export async function POST(request: NextRequest) {
     console.log(`Imagen convertida a base64, longitud: ${base64Image.length} bytes`);
 
     // Cargar el prompt data con el formato requerido por ComfyUI
-    // Usar el nodo LoadImageFromBase64 en lugar de LoadImageFromUrlOrPath
     const promptData = {
       "2": {
         "inputs": {
@@ -207,6 +240,7 @@ export async function POST(request: NextRequest) {
         }
       }
     };
+
     // Verificar conexión con ComfyUI
     console.log('Verificando conexión con ComfyUI...');
     try {
@@ -227,7 +261,6 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json' },
       timeout: 30000 // 30 segundos de timeout
     });
-
 
     if (promptResponse.status !== 200) {
       console.error('Error en la respuesta de ComfyUI:', promptResponse.data);
@@ -302,7 +335,7 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
     
-   const outputs = historyData[promptId].outputs;
+    const outputs = historyData[promptId].outputs;
     const images = outputs['53'].images;
     
     if (images && images.length > 0) {
@@ -317,32 +350,32 @@ export async function POST(request: NextRequest) {
         const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
         
         // Generar un nombre único y personalizado para la imagen
-// Modificar la parte final donde procesas y guardas la imagen
-
-// Generar un nombre único y personalizado para la imagen
-const timestamp = format(new Date(), 'ddMMyyyyHHmmss');
-const randomSuffix = Math.random().toString(36).substring(2, 7);
-// Usar el mismo sufijo en el nombre del archivo para consistencia
-const customFileName = `gasto_fantasma_${timestamp}_${randomSuffix}.jpg`;
-const filePath = `totem-fotos/${customFileName}`;
-
-// Subir la imagen a Vercel Blob con nombre personalizado
-console.log('Subiendo imagen a Vercel Blob como:', customFileName);
-const blob = await put(filePath, imageResponse.data, {
-  access: 'public',
-  contentType: 'image/jpeg',
-  addRandomSuffix: false // No añadir sufijos adicionales
-});
-
-console.log(`Imagen subida a Vercel Blob. URL: ${blob.url}`);
-
-// Retornar la URL directa del blob
-return NextResponse.json({ 
-  success: true,
-  blobUrl: blob.url, // URL directa para el QR
-  downloadUrl: blob.url, // Por si necesitas una URL separada para descargas
-  imageId: `${timestamp}_${randomSuffix}` // ID completo incluido el sufijo
-});
+        const timestamp = format(new Date(), 'ddMMyyyyHHmmss');
+        const randomSuffix = Math.random().toString(36).substring(2, 7);
+        const customFileName = `gasto_fantasma_${timestamp}_${randomSuffix}.jpg`;
+        const filePath = `totem-fotos/${customFileName}`;
+        
+        // Subir la imagen a Vercel Blob con nombre personalizado
+        console.log('Subiendo imagen a Vercel Blob como:', customFileName);
+        const blob = await put(filePath, imageResponse.data, {
+          access: 'public',
+          contentType: 'image/jpeg',
+          addRandomSuffix: false // No añadir sufijos adicionales
+        });
+        
+        console.log(`Imagen subida a Vercel Blob. URL: ${blob.url}`);
+        
+        // Limpiar el map de solicitudes recientes para esta solicitud
+        recentRequests.delete(requestId);
+        
+        // Devolver la información completa
+        return NextResponse.json({ 
+          success: true,
+          blobUrl: blob.url,
+          downloadUrl: blob.url,
+          imageId: `${timestamp}_${randomSuffix}`,
+          fileName: customFileName
+        });
       } catch (err) {
         console.error('Error al procesar la imagen final:', err);
         return NextResponse.json({ 

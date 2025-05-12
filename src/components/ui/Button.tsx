@@ -21,11 +21,11 @@ const Button: React.FC<ButtonProps> = ({
       disabled={disabled}
       className={`
         text-center 
-        py-3 
-        px-12 
+        py-5 
+        px-16 
         rounded-full 
         font-bold 
-        text-lg 
+        text-xl 
         text-black 
         bg-[var(--button-color)] 
         hover:bg-[var(--button-hover)] 
