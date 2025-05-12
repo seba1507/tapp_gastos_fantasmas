@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  // Obtener el ID de los parámetros de consulta
   const searchParams = request.nextUrl.searchParams;
   const id = searchParams.get('id');
   
@@ -30,16 +29,33 @@ export async function GET(request: NextRequest) {
     // Obtener el buffer de la imagen
     const imageBuffer = await imageResponse.arrayBuffer();
     
-    // Crear una respuesta con los headers adecuados para forzar la descarga
-    // Combinar ambos formatos en un solo valor para Content-Disposition
+    // Detectar si es un user agent de iOS
+    const userAgent = request.headers.get('user-agent') || '';
+    const isiOS = /iPhone|iPad|iPod/i.test(userAgent);
+    
+    // Crear nombre de archivo sin extensión para iOS
+    const filename = isiOS ? "gastos_fantasmas" : "gastos_fantasmas.jpg";
+    
+    // Headers específicos para iOS
+    const headers: HeadersInit = {
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    };
+    
+    // Configurar Content-Disposition según plataforma
+    if (isiOS) {
+      // Para iOS, usar un formato más simple
+      headers['Content-Disposition'] = `attachment; filename=${filename}`;
+    } else {
+      // Para otros dispositivos, usar el formato estándar
+      headers['Content-Disposition'] = `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+    }
+    
     const response = new NextResponse(imageBuffer, {
       status: 200,
-      headers: {
-        'Content-Type': 'image/jpeg',
-        // Un solo Content-Disposition con ambos formatos combinados
-        'Content-Disposition': 'attachment; filename="gastos_fantasmas.jpg"; filename*=UTF-8\'\'gastos_fantasmas.jpg',
-        'Cache-Control': 'no-cache'
-      }
+      headers: headers
     });
     
     return response;
