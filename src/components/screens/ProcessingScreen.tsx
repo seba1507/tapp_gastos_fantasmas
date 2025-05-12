@@ -58,13 +58,14 @@ export default function ProcessingScreen({
         setProcessingStatus("¡Imagen lista!");
         
         // Usar directamente la URL del blob para evitar problemas de nombres
-        const downloadUrl = data.blobUrl;
-        console.log("URL del blob recibida:", downloadUrl);
-        
-        // Pequeña pausa para que se vea el mensaje de éxito
-        setTimeout(() => {
-          onProcessingComplete(downloadUrl);
-        }, 1000);
+const downloadUrl = window.location.origin + 
+  `/api/download-image?id=${encodeURIComponent(data.blobUrl)}`;
+console.log("URL de descarga creada:", downloadUrl);
+
+// Pequeña pausa para que se vea el mensaje de éxito
+setTimeout(() => {
+  onProcessingComplete(downloadUrl);
+}, 1000);
         
       } catch (error) {
         console.error('Error al procesar la imagen:', error);
