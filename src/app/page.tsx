@@ -164,13 +164,13 @@ export default function Home() {
           />
         )}
 
-        {currentState === 'result' && (
-          <ResultScreen
-            qrCodeUrl={qrCodeUrl}
-            sessionId={sessionId} // Nuevo prop
-            onReset={handleReset}
-          />
-        )}
+{currentState === 'result' && (
+  <ResultScreen
+    qrCodeUrl={qrCodeUrl}
+    // Eliminamos sessionId de aquí también
+    onReset={handleReset}
+  />
+)}
 
         {currentState === 'error' && (
            // Error screen is now a simple overlay on top of the background

@@ -5,11 +5,11 @@ import { QRCodeSVG } from 'qrcode.react';
 
 interface ResultScreenProps {
   qrCodeUrl: string | null;
-  sessionId: string;
+  // Eliminamos sessionId si no lo vamos a usar
   onReset: () => void;
 }
 
-export default function ResultScreen({ qrCodeUrl, sessionId, onReset }: ResultScreenProps) {
+export default function ResultScreen({ qrCodeUrl, onReset }: ResultScreenProps) {
   const [isQrLoading, setIsQrLoading] = useState(true);
   const [qrError, setQrError] = useState<string | null>(null);
   
