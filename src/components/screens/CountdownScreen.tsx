@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useEffect, useState, useCallback } from "react"; // Import useCallback
-import Image from "next/image"; // Importación correcta
+import { useRef, useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 
 interface CountdownScreenProps {
   onCapture: (data: string) => void;
@@ -10,50 +10,77 @@ interface CountdownScreenProps {
 export default function CountdownScreen({ onCapture }: CountdownScreenProps) {
   const [count, setCount] = useState(3);
   const [flash, setFlash] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(true);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   /* ------------------------------ Cámara ------------------------------ */
-  // Moved camera setup to CameraScreen. This effect now only handles cleanup if stream is set
-  // Although it seems you *also* set up the camera here. This might be a source of bugs
-  // if both components are trying to access the camera. For now, fixing the linting:
-   useEffect(() => {
-    // Capture videoElement here for cleanup
+  useEffect(() => {
+    // Indicar que estamos cargando
+    setCameraLoading(true);
+    
+    const initCamera = async () => {
+      try {
+        console.log("Iniciando cámara para cuenta regresiva...");
+        
+        // Opciones optimizadas para inicio rápido
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            width: { ideal: 1080 },
+            height: { ideal: 1920 },
+            frameRate: { ideal: 30 }
+          },
+        });
+        
+        console.log("Stream obtenido, configurando video...");
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            console.log("Metadata de video cargada");
+            videoRef.current?.play().then(() => {
+              console.log("Video reproduciendo");
+              setCameraReady(true);
+              setCameraLoading(false);
+            }).catch(err => {
+              console.error("Error al reproducir video:", err);
+              setCameraError("Error al iniciar la cámara");
+              setCameraLoading(false);
+            });
+          };
+        }
+      } catch (error) {
+        console.error("Error al iniciar cámara para cuenta regresiva:", error);
+        setCameraError("No se pudo acceder a la cámara");
+        setCameraLoading(false);
+      }
+    };
+
+    // Iniciar cámara inmediatamente
+    initCamera();
+
+    // Captura referencia para limpieza
     const videoElement = videoRef.current;
 
-    // Note: Ideally camera setup should be in one place (e.g., CameraScreen)
-    // If this screen needs to start the camera too, the logic below is fine,
-    // but consider managing the stream higher up if possible.
-    navigator.mediaDevices
-      .getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
-        },
-      })
-      .then((s) => {
-        if (videoElement) videoElement.srcObject = s; // Use captured element
-      })
-      .catch(console.error);
-
-
     return () => {
-       // Use the captured videoElement in the cleanup
-       const stream = videoElement?.srcObject as MediaStream | null;
-       if (stream) { // Use if statement instead of &&
-         stream.getTracks().forEach((t) => t.stop());
-       }
+      // Limpiar recursos
+      const stream = videoElement?.srcObject as MediaStream | null;
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        console.log("Recursos de cámara liberados en CountdownScreen");
+      }
     };
-  }, []); // Empty dependency array is correct for mount/unmount cleanup
+  }, []);
 
   /* ----------------------------- Captura ------------------------------ */
-  // Wrap capture in useCallback because it's used in useEffect deps
   const capture = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) {
       console.error("Refs not available for capture");
-      return; // Add a guard clause
+      return;
     }
 
     const v = videoRef.current;
@@ -83,27 +110,30 @@ export default function CountdownScreen({ onCapture }: CountdownScreenProps) {
     }
 
     ctx.save();
-    ctx.translate(c.width, 0); // espejo
+    ctx.translate(c.width, 0);
     ctx.scale(-1, 1);
     ctx.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
     ctx.restore();
 
     onCapture(c.toDataURL("image/jpeg", 0.9));
-  }, [onCapture]); // Dependency array for useCallback
+  }, [onCapture]);
 
   /* --------------------- Lógica unificada de temporizador -------------- */
   useEffect(() => {
+    // No iniciar la cuenta regresiva hasta que la cámara esté lista
+    if (!cameraReady) return;
+    
     if (count === 0) {
-      // Momento “flash” ⇒ capturar y avisar al padre
+      // Momento "flash" => capturar y avisar al padre
       setFlash(true);
-      capture(); // capture is now a dependency
-      const off = setTimeout(() => setFlash(false), 120); // destello muy breve
+      capture();
+      const off = setTimeout(() => setFlash(false), 120);
       return () => clearTimeout(off);
     }
 
     const id = setTimeout(() => setCount((c) => c - 1), 1000);
     return () => clearTimeout(id);
-  }, [count, capture]); // Added 'capture' to dependencies
+  }, [count, capture, cameraReady]);
 
   /* -------------------------------- UI -------------------------------- */
   return (
@@ -114,12 +144,12 @@ export default function CountdownScreen({ onCapture }: CountdownScreenProps) {
         alt="Fondo"
         fill
         priority
-        sizes="100vw" // Added sizes prop
+        sizes="100vw"
         className="object-cover"
       />
 
       <div className="relative z-10 flex flex-col items-center justify-center h-full p-6">
-        <h1 className="text-title-sm font-bold text-center mb-8 text-white drop-shadow">¡PREPÁRATE!</h1> {/* Added text-white */}
+        <h1 className="text-title-sm font-bold text-center mb-8 text-white drop-shadow">¡PREPÁRATE!</h1>
 
         <div className="w-4/5 max-w-md aspect-[9/16] max-h-[65vh] bg-black rounded-2xl overflow-hidden shadow-xl relative">
           <video
@@ -130,10 +160,36 @@ export default function CountdownScreen({ onCapture }: CountdownScreenProps) {
             className="-scale-x-100 w-full h-full object-cover"
           />
 
-          {count > 0 && (
+          {/* Estado de carga de la cámara */}
+          {cameraLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70">
+              <div className="text-center">
+                <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-white">Iniciando cámara...</p>
+              </div>
+            </div>
+          )}
+          
+          {/* Error de cámara */}
+          {cameraError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80">
+              <div className="text-center p-4">
+                <p className="text-white text-lg mb-4">{cameraError}</p>
+                <button 
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg"
+                  onClick={() => window.location.reload()}
+                >
+                  Reintentar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Número de cuenta regresiva */}
+          {cameraReady && count > 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
               <span
-                className="text-white font-bold z-20 drop-shadow-lg" // Added drop-shadow-lg
+                className="text-white font-bold z-20 drop-shadow-lg"
                 style={{
                   fontFamily: "Futura Std",
                   fontSize: "180px",
