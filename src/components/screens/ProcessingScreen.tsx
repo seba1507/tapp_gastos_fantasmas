@@ -58,8 +58,8 @@ useEffect(() => {
       setProcessingStatus("¡Imagen lista!");
       
       // Crear la URL personalizada usando nuestra propia API
-      const downloadUrl = window.location.origin + `/api/download/${data.imageId}`;
-      
+// En ProcessingScreen.tsx
+const downloadUrl = window.location.origin + `/api/download-image?id=${data.imageId}`;      
       // Pequeña pausa para que se vea el mensaje de éxito
       setTimeout(() => {
         // Pasamos la URL personalizada

@@ -1,12 +1,16 @@
-// app/api/download/[id]/route.ts
+// app/api/download-image/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-// En Next.js App Router, la sintaxis correcta para rutas dinámicas es diferente
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } } // Este es el formato correcto que espera Next.js
-) {
-  const id = params.id;
+export async function GET(request: NextRequest) {
+  // Obtener el ID de los parámetros de consulta
+  const searchParams = request.nextUrl.searchParams;
+  const id = searchParams.get('id');
+  
+  if (!id) {
+    return NextResponse.json({ 
+      error: 'ID no proporcionado' 
+    }, { status: 400 });
+  }
   
   try {
     // Construye la URL de Vercel Blob con el ID proporcionado
