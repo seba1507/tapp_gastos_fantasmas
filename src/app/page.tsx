@@ -29,8 +29,6 @@ export default function Home() {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
-  // ID de sesión único para cada toma de fotografía
-  const [sessionId, setSessionId] = useState(Date.now().toString());
 
   // Estado para prevenir múltiples transiciones
   const [isNavigating, setIsNavigating] = useState(false);
@@ -65,8 +63,7 @@ export default function Home() {
     console.log("handleImageCapture llamado con datos de imagen",
                 imageData.substring(0, 50) + "...");
 
-    // Generar un nuevo ID de sesión
-    setSessionId(Date.now().toString());
+
     
     // Guardar la imagen primero
     setCapturedImage(imageData);

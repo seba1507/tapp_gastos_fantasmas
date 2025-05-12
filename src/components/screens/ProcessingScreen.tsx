@@ -138,7 +138,8 @@ export default function ProcessingScreen({
         clearTimeout(processingTimeoutRef.current);
       }
     };
-  }, []); // Array vacío para que solo se ejecute UNA vez al montar
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Actualizar el estado solo cuando cambia la URL de la imagen 
   // (pero NO reiniciar el procesamiento)
