@@ -31,11 +31,13 @@ export async function GET(request: NextRequest) {
     const imageBuffer = await imageResponse.arrayBuffer();
     
     // Crear una respuesta con los headers adecuados para forzar la descarga
+    // Combinar ambos formatos en un solo valor para Content-Disposition
     const response = new NextResponse(imageBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'image/jpeg',
-        'Content-Disposition': 'attachment; filename="gastos_fantasmas.jpg"',
+        // Un solo Content-Disposition con ambos formatos combinados
+        'Content-Disposition': 'attachment; filename="gastos_fantasmas.jpg"; filename*=UTF-8\'\'gastos_fantasmas.jpg',
         'Cache-Control': 'no-cache'
       }
     });
