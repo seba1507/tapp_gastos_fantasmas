@@ -45,14 +45,14 @@ export default function ResultScreen({ qrCodeUrl, sessionId, onReset }: ResultSc
         {/* Código QR con validación */}
         <div className="bg-white p-6 rounded-xl shadow-xl mb-8">
           {isQrValid ? (
-            <QRCodeSVG 
-              value={qrCodeUrl!}
-              size={200}
-              bgColor={"#ffffff"}
-              fgColor={"#000000"}
-              level={"M"}
-              includeMargin={false}
-            />
+<QRCodeSVG 
+  value={qrCodeUrl || ''}
+  size={200}
+  bgColor={"#ffffff"}
+  fgColor={"#000000"}
+  level={"M"}
+  includeMargin={false}
+/>
           ) : (
             <div className="w-44 h-44 flex items-center justify-center bg-gray-200 rounded-lg">
               <div className="text-center text-gray-500 p-4">

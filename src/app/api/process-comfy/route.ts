@@ -339,9 +339,7 @@ const blob = await put(filePath, imageResponse.data, {
 return NextResponse.json({ 
   success: true,
   blobUrl: blob.url,
-  downloadUrl: blob.downloadUrl,
-  imageId: timestamp,
-  suffixId: randomSuffix // Añadir el sufijo para reconstruir el nombre
+  directDownloadUrl: blob.url // URL directa para la descarga
 });
       } catch (err) {
         console.error('Error al procesar la imagen final:', err);
